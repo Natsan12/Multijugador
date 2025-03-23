@@ -41,7 +41,6 @@ GameObject:
   m_Component:
   - component: {fileID: 707136990861001141}
   - component: {fileID: -461924240613183732}
-  - component: {fileID: -2118014780378882890}
   - component: {fileID: 7934037344855887186}
   - component: {fileID: 1201294337746067207}
   - component: {fileID: -2622743263030650317}
@@ -51,7 +50,7 @@ GameObject:
   - component: {fileID: 5434346712828083021}
   m_Layer: 3
   m_Name: FreeSample_male_1
-  m_TagString: MainCamera
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -99,20 +98,6 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
---- !u!114 &-2118014780378882890
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 187904287186049807}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ddb35e74cae6b7418bd4f28bab73ea2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  holdPoint: {fileID: 5811585332714489616}
-  pickupRange: 2
 --- !u!95 &7934037344855887186
 Animator:
   serializedVersion: 7
@@ -158,9 +143,9 @@ MonoBehaviour:
   SyncRotAngleX: 1
   SyncRotAngleY: 1
   SyncRotAngleZ: 1
-  SyncScaleX: 1
-  SyncScaleY: 1
-  SyncScaleZ: 1
+  SyncScaleX: 0
+  SyncScaleY: 0
+  SyncScaleZ: 0
   PositionThreshold: 0.001
   RotAngleThreshold: 0.01
   ScaleThreshold: 0.01
@@ -195,7 +180,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 1
+  m_Interpolate: 0
   m_Constraints: 80
   m_CollisionDetection: 1
 --- !u!114 &-4368053453799793342
@@ -249,6 +234,7 @@ MonoBehaviour:
   animator: {fileID: 7934037344855887186}
   moveSpeed: 5
   jumpForce: 5
+  holdPoint: {fileID: 5811585332714489616}
 --- !u!136 &5434346712828083021
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -696,10 +682,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5811585332714489616}
+  - component: {fileID: 7235685517733554927}
   m_Layer: 3
   m_Name: HoldPoint
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 5132851093641282708, guid: 0000000000000000d000000000000000, type: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -712,12 +699,24 @@ Transform:
   m_GameObject: {fileID: 4868561051633081123}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.212, y: 0.334, z: 0.108}
+  m_LocalPosition: {x: 0.193, y: 0.356, z: -0.096}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 707136990861001141}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7235685517733554927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4868561051633081123}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a46d6d80ba221fd4db430f90d66d7df3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5191627451676132775
 GameObject:
   m_ObjectHideFlags: 0

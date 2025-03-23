@@ -8,6 +8,7 @@ TagManager:
   - Pickup
   - Pickable
   - Ground
+  - Contenedor
   layers:
   - Default
   - TransparentFX

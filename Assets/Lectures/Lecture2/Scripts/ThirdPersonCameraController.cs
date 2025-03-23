@@ -42,6 +42,7 @@ public class ThirdPersonCameraController : NetworkBehaviour
     {
         if (!IsOwner || mainCamera == null || target == null) return;
 
+        // 1. Leer movimiento del mouse
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
@@ -49,10 +50,21 @@ public class ThirdPersonCameraController : NetworkBehaviour
         currentPitch -= mouseY;
         currentPitch = Mathf.Clamp(currentPitch, minY, maxY);
 
+        // 2. Calcular rotación
         Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+
+        // 3. Calcular posición deseada
         Vector3 desiredPosition = target.position + rotation * offset;
 
-        mainCamera.transform.position = Vector3.Lerp(mainCamera.transform.position, desiredPosition, followSpeed * Time.deltaTime);
+        // 4. Aplicar posición suavizada
+        mainCamera.transform.position = Vector3.Lerp(
+            mainCamera.transform.position,
+            desiredPosition,
+            followSpeed * Time.deltaTime
+        );
+
+        // 5. Hacer que mire hacia el jugador (ligeramente elevado)
         mainCamera.transform.LookAt(target.position + Vector3.up * 1.5f);
     }
+
 }
