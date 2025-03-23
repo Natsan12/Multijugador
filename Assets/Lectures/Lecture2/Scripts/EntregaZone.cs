@@ -1,45 +1,40 @@
-﻿// EntregaZone.cs
+﻿using Unity.Netcode;
 using UnityEngine;
-using Unity.Netcode;
 
 public class EntregaZone : NetworkBehaviour
 {
-    public Transform puntoDeColocacion;
-    private int puntos = 0;
+    public Transform[] placementSpots; // Posiciones donde colocar los balones entregados
+    private int currentSpotIndex = 0;
 
-    private void OnTriggerEnter(Collider other)
+    // 🚫 No se usa OnTriggerEnter, entrega manual
+
+    public void EntregarBalon(BallPickup ball)
     {
         if (!IsServer) return;
 
-        Debug.Log($"[EntregaZone] Trigger detectado con: {other.name}");
+        ball.Deliver();
 
-        PlayerController player = other.GetComponent<PlayerController>();
-        if (player != null && player.HasBall())
-        {
-            BallPickup balon = player.GetCarriedBall();
+        // Posicionar balón en el contenedor visualmente
+        Vector3 targetPos = placementSpots.Length > 0 && currentSpotIndex < placementSpots.Length
+            ? placementSpots[currentSpotIndex].position
+            : transform.position + Vector3.up * 0.5f;
 
-            // Validación adicional
-            if (balon != null && !balon.IsBeingHeld())
-            {
-                Debug.Log("[EntregaZone] ✅ El jugador ya soltó el balón.");
+        Quaternion targetRot = placementSpots.Length > 0 && currentSpotIndex < placementSpots.Length
+            ? placementSpots[currentSpotIndex].rotation
+            : Quaternion.identity;
 
-                puntos++;
-                Debug.Log($"🎯 Balón entregado correctamente. Puntos: {puntos}");
+        // 🧩 Opcional: "pegar" el balón al punto (parentarlo si lo necesitas totalmente fijo)
+        ball.transform.SetParent(null); // o: ball.transform.SetParent(placementSpots[currentSpotIndex]);
 
-                balon.transform.SetParent(null);
-                balon.transform.position = puntoDeColocacion.position;
-                balon.transform.rotation = puntoDeColocacion.rotation;
-                balon.PrepararComoEntregado();
+        // 🔄 Sincronizar la posición con todos los clientes
+        ball.SetBallPositionClientRpc(targetPos, targetRot);
 
-                player.ClearBall();
-            }
-            else
-            {
-                Debug.Log("[EntregaZone] ⚠️ El jugador todavía tiene el balón en la mano. No se entrega.");
-            }
+        Rigidbody rb = ball.GetComponent<Rigidbody>();
+        rb.isKinematic = true;
+        rb.detectCollisions = false;
 
-        }
+        currentSpotIndex++;
+
+        Debug.Log("📦 Balón entregado manualmente");
     }
 }
-
-

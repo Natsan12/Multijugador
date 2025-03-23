@@ -1,114 +1,82 @@
 ﻿using Unity.Netcode;
+using Unity.Netcode.Components;
 using UnityEngine;
-using System.Collections;
 
 public class BallPickup : NetworkBehaviour
 {
     public NetworkVariable<bool> isTaken = new NetworkVariable<bool>(false);
-    private Rigidbody rb;
-    private bool isBeingHeld = false;
-    private Transform currentHoldPoint;
+    private ulong carriedByClientId;
+    private Transform followTarget;
+    private NetworkTransform netTransform;
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
+        netTransform = GetComponent<NetworkTransform>();
     }
 
-    private void Update()
+    public void TryPickUp(ulong clientId)
     {
-        if (isBeingHeld && currentHoldPoint != null)
-        {
-            transform.position = currentHoldPoint.position;
-            transform.rotation = currentHoldPoint.rotation;
-        }
-    }
+        if (isTaken.Value) return;
+        isTaken.Value = true;
+        carriedByClientId = clientId;
+        netTransform.enabled = false;
 
-    public void TryPickUp(ulong playerId)
-    {
-        if (IsServer && !isTaken.Value)
-        {
-            Debug.Log($"[Servidor] Balón recogido por el jugador {playerId}");
-            isTaken.Value = true;
-            PickupClientRpc(playerId);
-        }
-    }
-
-    [ClientRpc]
-    void PickupClientRpc(ulong playerId)
-    {
-        if (NetworkManager.Singleton.LocalClientId == playerId)
-        {
-            var player = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
-            Transform holdPoint = player.GetComponentInChildren<HoldPoint>()?.transform;
-
-            if (holdPoint != null)
-            {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
-                rb.isKinematic = true;
-                rb.useGravity = false;
-                rb.detectCollisions = false;
-
-                currentHoldPoint = holdPoint;
-                isBeingHeld = true;
-
-                Debug.Log("[Cliente] Balón unido al HoldPoint");
-
-                var animator = player.GetComponentInChildren<Animator>();
-                if (animator != null)
-                {
-                    animator.SetBool("IsPicking", true);
-                    player.GetComponent<MonoBehaviour>().StartCoroutine(ResetPickAnimation(animator));
-                }
-            }
-        }
-    }
-
-    private IEnumerator ResetPickAnimation(Animator animator)
-    {
-        yield return new WaitForSeconds(0.5f);
-        animator.SetBool("IsPicking", false);
+        Debug.Log($"🎒 Balón recogido por jugador {clientId}");
     }
 
     public void Deliver()
     {
-        if (IsServer)
+        isTaken.Value = false;
+        carriedByClientId = 0;
+        followTarget = null;
+
+        Debug.Log("✅ Balón entregado");
+    }
+
+    [ClientRpc]
+    public void SetFollowTargetClientRpc(ulong playerId)
+    {
+        if (NetworkManager.Singleton.ConnectedClients.ContainsKey(playerId))
         {
-            Debug.Log("[Servidor] Balón entregado al contenedor");
-            isTaken.Value = false;
-            DeliverClientRpc();
+            GameObject player = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.gameObject;
+            followTarget = player.GetComponent<PlayerController>().holdPoint;
         }
     }
 
     [ClientRpc]
-    void DeliverClientRpc()
+    public void ClearFollowTargetClientRpc()
     {
+        Debug.Log("🧹 followTarget limpiado en cliente");
+        followTarget = null;
+    }
+
+    [ClientRpc]
+    public void SetBallPositionClientRpc(Vector3 position, Quaternion rotation)
+    {
+        transform.position = position;
+        transform.rotation = rotation;
+    }
+
+    [ClientRpc]
+    public void ForceVisualResetClientRpc()
+    {
+        followTarget = null;
+        Rigidbody rb = GetComponent<Rigidbody>();
         rb.isKinematic = false;
-        rb.useGravity = true;
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
         rb.detectCollisions = true;
-
-        currentHoldPoint = null;
-        isBeingHeld = false;
-
-        Debug.Log("[Cliente] Balón soltado (enviado lejos o reposicionado)");
-
-        
     }
 
-    public void PrepararComoEntregado()
+    private void LateUpdate()
     {
-        Debug.Log("[Cliente] Balón marcado como entregado en el lugar");
-        rb.isKinematic = true;
-        rb.useGravity = false;
-        rb.detectCollisions = false;
-        isBeingHeld = false;
-        currentHoldPoint = null;
+        // ❌ Antes: if (!IsOwner) return;
+        // ✅ Solución: permitir que todos los clientes vean el movimiento si hay un followTarget
+        if (followTarget != null)
+        {
+            transform.position = followTarget.position;
+            transform.rotation = followTarget.rotation;
+        }
     }
 
-    public bool IsBeingHeld()
-    {
-        return isBeingHeld;
-    }
+    public bool IsCarriedBy(ulong clientId) => carriedByClientId == clientId;
+    public ulong GetCarrier() => carriedByClientId;
 }

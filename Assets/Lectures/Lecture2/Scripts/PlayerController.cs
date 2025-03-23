@@ -14,10 +14,17 @@ public class PlayerController : NetworkBehaviour
     private bool isGrounded = true;
     private BallPickup carriedBall;
 
-    private void Awake()
-    {
-        rb = GetComponent<Rigidbody>();
-    }
+    private NetworkVariable<float> syncedSpeed = new NetworkVariable<float>(writePerm: NetworkVariableWritePermission.Owner);
+
+    // 🆕 Para detectar si está dentro del contenedor
+    private bool isInEntregaZone = false;
+    private EntregaZone entregaZone;
+
+    // 🆕 Para guardar posición inicial del balón al recogerlo
+    private Vector3 lastBallPosition;
+    private Quaternion lastBallRotation;
+
+    private void Awake() => rb = GetComponent<Rigidbody>();
 
     private void Start()
     {
@@ -35,6 +42,8 @@ public class PlayerController : NetworkBehaviour
         HandleMovementInput();
         HandleJumpInput();
         HandlePickupDropInput();
+
+        syncedSpeed.Value = inputMovement.magnitude;
     }
 
     private void FixedUpdate()
@@ -52,7 +61,6 @@ public class PlayerController : NetworkBehaviour
 
         if (inputDir.magnitude < 0.1f)
         {
-            animator.SetFloat("Speed", 0f);
             inputMovement = Vector3.zero;
             return;
         }
@@ -68,8 +76,6 @@ public class PlayerController : NetworkBehaviour
 
         Quaternion targetRotation = Quaternion.LookRotation(inputMovement);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.deltaTime);
-
-        animator.SetFloat("Speed", 1.5f);
     }
 
     private void MovePlayer()
@@ -90,13 +96,9 @@ public class PlayerController : NetworkBehaviour
         if (!isGrounded)
         {
             float verticalVelocity = rb.linearVelocity.y;
-
-            if (verticalVelocity > 0.1f)
-                animator.SetInteger("JumpPhase", 1);
-            else if (Mathf.Abs(verticalVelocity) <= 0.1f)
-                animator.SetInteger("JumpPhase", 2);
-            else if (verticalVelocity < -0.1f)
-                animator.SetInteger("JumpPhase", 3);
+            if (verticalVelocity > 0.1f) animator.SetInteger("JumpPhase", 1);
+            else if (Mathf.Abs(verticalVelocity) <= 0.1f) animator.SetInteger("JumpPhase", 2);
+            else if (verticalVelocity < -0.1f) animator.SetInteger("JumpPhase", 3);
         }
     }
 
@@ -111,19 +113,22 @@ public class PlayerController : NetworkBehaviour
 
     private void HandlePickupDropInput()
     {
-        if (Input.GetMouseButtonDown(0))
-        {
-            TryPickup();
-        }
+        if (Input.GetMouseButtonDown(0)) TryPickup();
 
-        if (Input.GetMouseButtonDown(1))
+        if (Input.GetMouseButtonDown(1) && carriedBall != null)
         {
-            if (carriedBall != null)
+            if (isInEntregaZone && entregaZone != null)
             {
-                Debug.Log("📤 Entregando balón al soltar");
+                Debug.Log("📤 Soltando balón dentro del contenedor");
                 DeliverServerRpc(carriedBall.NetworkObject);
-                carriedBall = null;
             }
+            else
+            {
+                Debug.Log("🚫 No estás en la zona de entrega, reiniciando posición del balón");
+                RestoreBallPositionClientRpc(carriedBall.NetworkObject, lastBallPosition, lastBallRotation);
+            }
+
+            carriedBall = null;
         }
     }
 
@@ -136,24 +141,60 @@ public class PlayerController : NetworkBehaviour
         {
             if (col.TryGetComponent(out BallPickup ball) && !ball.isTaken.Value)
             {
+                // 🧠 Guardamos la posición original
+                lastBallPosition = ball.transform.position;
+                lastBallRotation = ball.transform.rotation;
+
                 Debug.Log("🤲 Intentando recoger balón");
                 PickupServerRpc(ball.NetworkObject);
-                carriedBall = ball;
                 break;
             }
         }
     }
 
     [ServerRpc]
-    void PickupServerRpc(NetworkObjectReference ballRef)
+    void PickupServerRpc(NetworkObjectReference ballRef, ServerRpcParams rpcParams = default)
     {
         if (ballRef.TryGet(out NetworkObject ballNet))
         {
             var ball = ballNet.GetComponent<BallPickup>();
             if (!ball.isTaken.Value)
             {
-                ball.TryPickUp(OwnerClientId);
+                ball.TryPickUp(rpcParams.Receive.SenderClientId);
+                SetBallClientRpc(ballRef, rpcParams.Receive.SenderClientId);
             }
+        }
+    }
+
+    [ClientRpc]
+    void SetBallClientRpc(NetworkObjectReference ballRef, ulong playerId)
+    {
+        if (ballRef.TryGet(out NetworkObject ballNet))
+        {
+            BallPickup ball = ballNet.GetComponent<BallPickup>();
+
+            if (OwnerClientId == playerId) carriedBall = ball;
+
+            Rigidbody rb = ball.GetComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.detectCollisions = false;
+
+            RequestAttachBallServerRpc(ballRef, playerId);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    void RequestAttachBallServerRpc(NetworkObjectReference ballRef, ulong playerId)
+    {
+        if (ballRef.TryGet(out NetworkObject ballNet))
+        {
+            BallPickup ball = ballNet.GetComponent<BallPickup>();
+            GameObject player = NetworkManager.Singleton.ConnectedClients[playerId].PlayerObject.gameObject;
+            Transform holdPoint = player.GetComponent<PlayerController>().holdPoint;
+
+            ball.transform.position = holdPoint.position;
+            ball.transform.rotation = holdPoint.rotation;
+            ball.SetFollowTargetClientRpc(playerId);
         }
     }
 
@@ -164,7 +205,50 @@ public class PlayerController : NetworkBehaviour
         {
             var ball = ballNet.GetComponent<BallPickup>();
             ball.Deliver();
+
+            ball.transform.SetParent(null);
+
+            Rigidbody rb = ball.GetComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.detectCollisions = false;
+
+            ball.ClearFollowTargetClientRpc();
+            ClearCarriedBallClientRpc(OwnerClientId);
+
+            // 🧠 Entrega visual desde zona
+            if (entregaZone != null)
+            {
+                entregaZone.EntregarBalon(ball);
+            }
         }
+    }
+
+    [ClientRpc]
+    void ClearCarriedBallClientRpc(ulong playerId)
+    {
+        if (OwnerClientId == playerId)
+        {
+            carriedBall = null;
+        }
+    }
+
+    // 🆕 Restaurar posición original si no se entrega correctamente
+    [ClientRpc]
+    void RestoreBallPositionClientRpc(NetworkObjectReference ballRef, Vector3 position, Quaternion rotation)
+    {
+        if (ballRef.TryGet(out NetworkObject ballNet))
+        {
+            ballNet.transform.position = position;
+            ballNet.transform.rotation = rotation;
+            Rigidbody rb = ballNet.GetComponent<Rigidbody>();
+            rb.isKinematic = false;
+            rb.detectCollisions = true;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        animator.SetFloat("Speed", syncedSpeed.Value);
     }
 
     public void SetCarriedBall(BallPickup ball)
@@ -173,18 +257,26 @@ public class PlayerController : NetworkBehaviour
         animator.SetTrigger("Pick");
     }
 
-    public bool HasBall()
+    public bool HasBall() => carriedBall != null;
+    public BallPickup GetCarriedBall() => carriedBall;
+    public void ClearBall() => carriedBall = null;
+
+    // 🆕 Detectar entrada/salida a la zona de entrega
+    private void OnTriggerEnter(Collider other)
     {
-        return carriedBall != null;
+        if (other.CompareTag("EntregaZone"))
+        {
+            isInEntregaZone = true;
+            entregaZone = other.GetComponent<EntregaZone>();
+        }
     }
 
-    public BallPickup GetCarriedBall()
+    private void OnTriggerExit(Collider other)
     {
-        return carriedBall;
-    }
-
-    public void ClearBall()
-    {
-        carriedBall = null;
+        if (other.CompareTag("EntregaZone"))
+        {
+            isInEntregaZone = false;
+            entregaZone = null;
+        }
     }
 }
