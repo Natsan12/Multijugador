@@ -1,33 +1,37 @@
 ﻿using Unity.Netcode;
 using UnityEngine;
+using TMPro;
 
 public class ScoreManager : NetworkBehaviour
 {
     public static ScoreManager Instance;
 
-    private NetworkVariable<int> player1Score = new NetworkVariable<int>();
-    private NetworkVariable<int> player2Score = new NetworkVariable<int>();
+    public TMP_Text player1Text;
+    public TMP_Text player2Text;
+    public Transform player1Transform;
+    public Transform player2Transform;
+
+
+    private NetworkVariable<int> player1Score = new NetworkVariable<int>(0);
+    private NetworkVariable<int> player2Score = new NetworkVariable<int>(0);
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
     }
 
-    public void AddPointToPlayer(ulong clientId)
+    private void Update()
     {
-        if (clientId == 0)
+        player1Text.text = $"Jugador 1: {player1Score.Value} puntos";
+        player2Text.text = $"Jugador 2: {player2Score.Value} puntos";
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void AddScoreServerRpc(ulong playerId)
+    {
+        if (playerId == 0)
             player1Score.Value++;
-        else if (clientId == 1)
+        else
             player2Score.Value++;
-
-        Debug.Log($"🎯 Puntos actualizados: P1={player1Score.Value}, P2={player2Score.Value}");
     }
-
-    public int GetScore(ulong clientId)
-    {
-        return clientId == 0 ? player1Score.Value : player2Score.Value;
-    }
-
-    public int GetPlayer1Score() => player1Score.Value;
-    public int GetPlayer2Score() => player2Score.Value;
 }

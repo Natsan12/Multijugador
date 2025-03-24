@@ -220,8 +220,12 @@ public class PlayerController : NetworkBehaviour
             {
                 entregaZone.EntregarBalon(ball);
             }
+
+            // 🎯 SUMAR PUNTOS al jugador que hizo la entrega
+            ScoreManager.Instance.AddScoreServerRpc(OwnerClientId);
         }
     }
+
 
     [ClientRpc]
     void ClearCarriedBallClientRpc(ulong playerId)
