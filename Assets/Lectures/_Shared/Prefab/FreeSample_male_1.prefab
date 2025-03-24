@@ -216,7 +216,7 @@ MonoBehaviour:
   offset: {x: 0, y: 2, z: -6}
   followSpeed: 10
   mouseSensitivity: 2
-  minY: -20
+  minY: 5
   maxY: 60
 --- !u!114 &-5535164893370829246
 MonoBehaviour:

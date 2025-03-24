@@ -11,7 +11,7 @@ public class ThirdPersonCameraController : NetworkBehaviour
 
     [Header("Rotación")]
     public float mouseSensitivity = 2f;
-    public float minY = -20f;
+    public float minY = 5f;
     public float maxY = 60f;
 
     private float currentYaw = 0f;
@@ -21,7 +21,8 @@ public class ThirdPersonCameraController : NetworkBehaviour
     private void Start()
     {
         if (!IsOwner) return;
-
+        if (target == null)
+            
         mainCamera = Camera.main;
         if (mainCamera == null)
         {
@@ -42,7 +43,7 @@ public class ThirdPersonCameraController : NetworkBehaviour
     {
         if (!IsOwner || mainCamera == null || target == null) return;
 
-        // 1. Leer movimiento del mouse
+        // Movimiento del mouse
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
@@ -50,21 +51,24 @@ public class ThirdPersonCameraController : NetworkBehaviour
         currentPitch -= mouseY;
         currentPitch = Mathf.Clamp(currentPitch, minY, maxY);
 
-        // 2. Calcular rotación
-        Quaternion rotation = Quaternion.Euler(currentPitch, currentYaw, 0f);
+        // Rotación solo en pitch para la cámara (no afecta offset invertido)
+        Quaternion pitchRotation = Quaternion.Euler(currentPitch, 0f, 0f);
+        Quaternion yawRotation = Quaternion.Euler(0f, currentYaw, 0f);
 
-        // 3. Calcular posición deseada
-        Vector3 desiredPosition = target.position + rotation * offset;
+        // Posición deseada: solo la Y rota verticalmente
+        Vector3 rotatedOffset = pitchRotation * offset;
+        Vector3 desiredPosition = target.position + yawRotation * rotatedOffset;
 
-        // 4. Aplicar posición suavizada
+        // Aplicar posición suavizada
         mainCamera.transform.position = Vector3.Lerp(
             mainCamera.transform.position,
             desiredPosition,
             followSpeed * Time.deltaTime
         );
 
-        // 5. Hacer que mire hacia el jugador (ligeramente elevado)
+        // La cámara mira al personaje
         mainCamera.transform.LookAt(target.position + Vector3.up * 1.5f);
     }
+
 
 }

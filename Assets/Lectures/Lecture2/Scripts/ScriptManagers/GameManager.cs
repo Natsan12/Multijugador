@@ -55,12 +55,9 @@ public class GameManager : NetworkBehaviour
         partidaActiva = false;
         OnGameEnd?.Invoke();
 
-        Invoke(nameof(MostrarGanador), 4.5f); // Mostrar después del mensaje final
-    }
-
-    private void MostrarGanador()
-    {
+        // Mostrar mensaje de quién ganó
         string mensajeGanador = DeterminarGanador();
+
         if (GameUIManager.Instance != null)
         {
             GameUIManager.Instance.MostrarGanador(mensajeGanador, Color.green);
@@ -88,5 +85,11 @@ public class GameManager : NetworkBehaviour
         if (score1 > score2) return "Ganó el Jugador 1";
         if (score2 > score1) return "Ganó el Jugador 2";
         return "¡Empate!";
+    }
+
+    // ✅ Método que usa GameUIManager para el cronómetro
+    public float GetTiempoRestante()
+    {
+        return tiempoRestante;
     }
 }

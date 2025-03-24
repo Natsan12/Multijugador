@@ -8,6 +8,7 @@ public class GameUIManager : MonoBehaviour
 
     public GameObject startButtonObj;
     public TMP_Text messageText;
+    public TMP_Text timerText; // ⏱️ NUEVO: campo para el cronómetro
 
     private void Awake()
     {
@@ -30,6 +31,35 @@ public class GameUIManager : MonoBehaviour
         {
             GameManager.Instance.OnGameStart -= MostrarInicio;
             GameManager.Instance.OnGameEnd -= MostrarFinal;
+        }
+    }
+
+    private void Update()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.EstaPartidaActiva())
+        {
+            float tiempo = GameManager.Instance.GetTiempoRestante();
+            ActualizarTimer(tiempo);
+        }
+    }
+
+    private void ActualizarTimer(float segundos)
+    {
+        if (timerText == null) return;
+
+        int minutos = Mathf.FloorToInt(segundos / 60f);
+        int segundosRestantes = Mathf.FloorToInt(segundos % 60f);
+
+        timerText.text = $"{minutos:00}:{segundosRestantes:00}";
+
+        // Cambiar color a rojo si quedan 10 segundos o menos
+        if (segundos <= 10f)
+        {
+            timerText.color = Color.red;
+        }
+        else
+        {
+            timerText.color = Color.white;
         }
     }
 
@@ -60,5 +90,3 @@ public class GameUIManager : MonoBehaviour
         messageText.gameObject.SetActive(false);
     }
 }
-
-
