@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Unity.Netcode;
 
 using UnityEngine;
@@ -31,8 +31,8 @@ namespace Lectures.Lecture2.Scripts
         {
             if (IsServer)
             {
-                StartServer();
-                Debug.Log("This server is running on" + GetType());
+                StartHost(); // 👈 Esto activa host = servidor + cliente
+                Debug.Log("✅ Este host está corriendo");
             }
         }
 
@@ -82,5 +82,5 @@ namespace Lectures.Lecture2.Scripts
             _networkManager.StartServer();
         }
         #endregion
-����}
+    }
 }

@@ -29,9 +29,20 @@ public class ScoreManager : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void AddScoreServerRpc(ulong playerId)
     {
+        if (!GameManager.Instance.EstaPartidaActiva())
+        {
+            Debug.Log("La partida aún no ha comenzado");
+            return;
+        }
+
         if (playerId == 0)
             player1Score.Value++;
         else
             player2Score.Value++;
+
+        // Verificar si se llegó al puntaje límite
+        int puntosActuales = playerId == 0 ? player1Score.Value : player2Score.Value;
+        GameManager.Instance.RevisarPuntos(puntosActuales);
     }
+
 }
