@@ -38,13 +38,14 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        Debug.Log("🎬 La partida ha comenzado");
+        Debug.Log("🎬 La partida ha comenzado"); // Asegúrate de que esté
 
         tiempoRestante = tiempoLimite;
         partidaActiva = true;
 
         OnGameStart?.Invoke();
     }
+
 
     public void FinalizarPartida()
     {
