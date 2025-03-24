@@ -18,8 +18,8 @@ public class GameManager : NetworkBehaviour
 
     private void Awake()
     {
-        Debug.Log("🧠 GameManager cargado");
         if (Instance == null) Instance = this;
+        Debug.Log("🧠 GameManager cargado");
     }
 
     private void Update()
@@ -38,14 +38,13 @@ public class GameManager : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        Debug.Log("🎬 La partida ha comenzado"); // Asegúrate de que esté
+        Debug.Log("🎬 La partida ha comenzado");
 
         tiempoRestante = tiempoLimite;
         partidaActiva = true;
 
         OnGameStart?.Invoke();
     }
-
 
     public void FinalizarPartida()
     {
@@ -55,6 +54,17 @@ public class GameManager : NetworkBehaviour
 
         partidaActiva = false;
         OnGameEnd?.Invoke();
+
+        Invoke(nameof(MostrarGanador), 4.5f); // Mostrar después del mensaje final
+    }
+
+    private void MostrarGanador()
+    {
+        string mensajeGanador = DeterminarGanador();
+        if (GameUIManager.Instance != null)
+        {
+            GameUIManager.Instance.MostrarGanador(mensajeGanador, Color.green);
+        }
     }
 
     public bool EstaPartidaActiva()
@@ -68,5 +78,15 @@ public class GameManager : NetworkBehaviour
         {
             FinalizarPartida();
         }
+    }
+
+    private string DeterminarGanador()
+    {
+        int score1 = ScoreManager.Instance.GetScore(0);
+        int score2 = ScoreManager.Instance.GetScore(1);
+
+        if (score1 > score2) return "Ganó el Jugador 1";
+        if (score2 > score1) return "Ganó el Jugador 2";
+        return "¡Empate!";
     }
 }

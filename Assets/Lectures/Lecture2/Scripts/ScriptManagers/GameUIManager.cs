@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using System.Collections;
 
@@ -39,19 +38,27 @@ public class GameUIManager : MonoBehaviour
         if (startButtonObj != null)
             startButtonObj.SetActive(false);
 
-        StartCoroutine(MostrarMensajeTemporal("🎬 ¡La partida ha comenzado!", 3f));
+        StartCoroutine(MostrarMensajeTemporal("🎬 ¡La partida ha comenzado!", 3f, Color.cyan));
     }
 
     private void MostrarFinal()
     {
-        StartCoroutine(MostrarMensajeTemporal("🏁 ¡La partida ha terminado!", 5f));
+        StartCoroutine(MostrarMensajeTemporal("🏁 ¡La partida ha terminado!", 5f, Color.red));
     }
 
-    private IEnumerator MostrarMensajeTemporal(string mensaje, float duracion)
+    public void MostrarGanador(string texto, Color color)
     {
+        StartCoroutine(MostrarMensajeTemporal($"🏆 {texto}", 4f, color));
+    }
+
+    private IEnumerator MostrarMensajeTemporal(string mensaje, float duracion, Color color)
+    {
+        messageText.color = color;
         messageText.text = mensaje;
         messageText.gameObject.SetActive(true);
         yield return new WaitForSeconds(duracion);
         messageText.gameObject.SetActive(false);
     }
 }
+
+
